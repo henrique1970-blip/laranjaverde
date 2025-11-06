@@ -104,63 +104,97 @@ document.addEventListener('DOMContentLoaded', () => {
         manutencoesContainer.insertAdjacentHTML('beforeend', createManutencaoHTML(index));
     });
 
-    // --- SUBMISSÃO DO FORMULÁRIO ---
-    form.addEventListener('submit', (event) => {
-        event.preventDefault();
-        
-        // Coletar todos os dados do formulário
-        const dadosFrete = {
-            id: new Date().getTime(), // ID único para o IndexedDB
-            motorista: document.getElementById('motorista').value,
-            placa: document.getElementById('placa').value,
-            origem: document.getElementById('origem').value,
-            destino: document.getElementById('destino').value,
-            transportadora: document.querySelector('input[name="transportadora"]:checked').value === 'outra' ? document.getElementById('outra-transportadora').value : 'Laranja Verde',
-            produto: document.getElementById('produto').value,
-            dataSaida: document.getElementById('data-saida').value,
-            kmSaida: document.getElementById('km-saida').value,
-            kmChegada: document.getElementById('km-chegada').value,
-            pesoSaida: document.getElementById('peso-saida').value,
-            valorTonelada: document.getElementById('valor-tonelada').value,
-            valorTotal: document.getElementById('valor-total').value,
-            dataDescarga: document.getElementById('data-descarga').value,
-            abastecimentos: [],
-            manutencoes: [],
-            fotosAbastecimento: [],
-            fotosManutencao: []
-        };
-        
-        // Coletar dados de abastecimentos
-        document.querySelectorAll('.abastecimento-item').forEach(async (item) => {
-            const fotoInput = item.querySelector('input[type="file"]');
-            dadosFrete.abastecimentos.push({
-                valor: item.querySelector('[data-field="valor"]').value,
-                data: item.querySelector('[data-field="data"]').value,
-                local: item.querySelector('[data-field="local"]').value,
-                posto: item.querySelector('[data-field="posto"]').value,
-                litros: item.querySelector('[data-field="litros"]').value,
-                km: item.querySelector('[data-field="km"]').value,
-            });
-            if (fotoInput.files[0]) {
-                 const base64 = await toBase64(fotoInput.files[0]);
-                 dadosFrete.fotosAbastecimento.push(base64);
-            }
-        });
 
-        // Coletar dados de manutenções
-        document.querySelectorAll('.manutencao-item').forEach(async (item) => {
-             const fotoInput = item.querySelector('input[type="file"]');
-            dadosFrete.manutencoes.push({
-                valor: item.querySelector('[data-field="valor"]').value,
-                data: item.querySelector('[data-field="data"]').value,
-                local: item.querySelector('[data-field="local"]').value,
-                servico: item.querySelector('[data-field="servico"]').value,
-            });
-            if (fotoInput.files[0]) {
-                 const base64 = await toBase64(fotoInput.files[0]);
-                 dadosFrete.fotosManutencao.push(base64);
-            }
+// --- SUBMISSÃO DO FORMULÁRIO ---
+form.addEventListener('submit', async (event) => { // Adicionado "async" aqui
+    event.preventDefault();
+    
+    // Desabilitar o botão para evitar cliques duplos
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.textContent = 'Salvando...';
+
+    // Coletar todos os dados do formulário
+    const dadosFrete = {
+        id: new Date().getTime(), // ID único para o IndexedDB
+        motorista: document.getElementById('motorista').value,
+        placa: document.getElementById('placa').value,
+        origem: document.getElementById('origem').value,
+        destino: document.getElementById('destino').value,
+        transportadora: document.querySelector('input[name="transportadora"]:checked').value === 'outra' ? document.getElementById('outra-transportadora').value : 'Laranja Verde',
+        produto: document.getElementById('produto').value,
+        dataSaida: document.getElementById('data-saida').value,
+        kmSaida: document.getElementById('km-saida').value,
+        kmChegada: document.getElementById('km-chegada').value,
+        pesoSaida: document.getElementById('peso-saida').value,
+        valorTonelada: document.getElementById('valor-tonelada').value,
+        valorTotal: document.getElementById('valor-total').value,
+        dataDescarga: document.getElementById('data-descarga').value,
+        abastecimentos: [],
+        manutencoes: [],
+        fotosAbastecimento: [], // Será preenchido pelas promessas
+        fotosManutencao: [] // Será preenchido pelas promessas
+    };
+
+    // 1. Coletar promessas de Abastecimento (fotos)
+    const promessasFotosAbastecimento = Array.from(document.querySelectorAll('.abastecimento-item')).map(async (item) => {
+        const fotoInput = item.querySelector('input[type="file"]');
+        // Adiciona os dados de texto (síncrono)
+        dadosFrete.abastecimentos.push({
+            valor: item.querySelector('[data-field="valor"]').value,
+            data: item.querySelector('[data-field="data"]').value,
+            local: item.querySelector('[data-field="local"]').value,
+            posto: item.querySelector('[data-field="posto"]').value,
+            litros: item.querySelector('[data-field="litros"]').value,
+            km: item.querySelector('[data-field="km"]').value,
         });
+        
+        // Retorna a promessa da foto (assíncrono)
+        if (fotoInput.files[0]) {
+            return toBase64(fotoInput.files[0]);
+        }
+        return null; // Retorna null se não houver foto
+    });
+
+    // 2. Coletar promessas de Manutenção (fotos)
+    const promessasFotosManutencao = Array.from(document.querySelectorAll('.manutencao-item')).map(async (item) => {
+        const fotoInput = item.querySelector('input[type="file"]');
+        // Adiciona os dados de texto (síncrono)
+        dadosFrete.manutencoes.push({
+            valor: item.querySelector('[data-field="valor"]').value,
+            data: item.querySelector('[data-field="data"]').value,
+            local: item.querySelector('[data-field="local"]').value,
+            servico: item.querySelector('[data-field="servico"]').value,
+        });
+        
+        // Retorna a promessa da foto (assíncrono)
+        if (fotoInput.files[0]) {
+            return toBase64(fotoInput.files[0]);
+        }
+        return null;
+    });
+
+    // 3. Aguardar TODAS as promessas de conversão de fotos
+    try {
+        const fotosAbastecimentoBase64 = await Promise.all(promessasFotosAbastecimento);
+        const fotosManutencaoBase64 = await Promise.all(promessasFotosManutencao);
+
+        // 4. Popular os arrays de fotos (filtrando os nulos)
+        dadosFrete.fotosAbastecimento = fotosAbastecimentoBase64.filter(foto => foto !== null);
+        dadosFrete.fotosManutencao = fotosManutencaoBase64.filter(foto => foto !== null);
+
+        // 5. Agora sim, salvar os dados completos localmente
+        saveDataLocally(dadosFrete);
+
+    } catch (error) {
+        console.error("Erro ao converter fotos para Base64:", error);
+        showAlert('Erro ao processar as fotos. Tente novamente.', 'error');
+    } finally {
+        // Reabilitar o botão
+        submitButton.disabled = false;
+        submitButton.textContent = 'Salvar e Enviar';
+    }
+});
 
         // Salvar no IndexedDB
         saveDataLocally(dadosFrete);
