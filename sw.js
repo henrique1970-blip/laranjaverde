@@ -68,16 +68,32 @@ function sendDataToServer(fretes) {
         return fetch(APPS_SCRIPT_URL, {
             method: 'POST',
             body: JSON.stringify(frete),
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Apps Script espera text/plain para doPost
-            mode: 'no-cors' // Essencial para evitar erros de CORS com Apps Script
-        }).then(response => {
-            // Como estamos em modo no-cors, não podemos ler a resposta.
-            // Assumimos sucesso e removemos do DB local.
-            console.log('Dado enviado (provavelmente com sucesso):', frete.id);
-            return removeFromLocalDB(frete.id);
+            headers: { 'Content-Type': 'application/json' }, // Mude para application/json
+            mode: 'cors' // Mude de 'no-cors' para 'cors'
+        })
+        .then(response => {
+            // Agora podemos ler a resposta!
+            if (response.ok) {
+                // Se o servidor disse OK (status 200-299), removemos do DB local.
+                console.log('Dado enviado com sucesso:', frete.id);
+                return removeFromLocalDB(frete.id);
+            } else {
+                // Se o servidor deu erro (4xx, 5xx), não removemos.
+                console.error('Falha ao enviar dado. Status:', response.status);
+                // Rejeitamos a promessa para que o 'sync' tente novamente mais tarde.
+                return Promise.reject(new Error('Falha no servidor: ' + response.status));
+            }
+        })
+        .catch(error => {
+            // Erro de rede (offline, DNS, etc.)
+            console.error('Erro de rede ao enviar dado:', error);
+            // Rejeitamos a promessa para que o 'sync' tente novamente.
+            return Promise.reject(error);
         });
     });
 
+    // Promise.all vai parar se UM falhar, o que é bom.
+    // Assim, a sincronização será retentada para todos os que falharam.
     return Promise.all(promises);
 }
 

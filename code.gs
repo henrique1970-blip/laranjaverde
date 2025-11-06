@@ -1,3 +1,8 @@
+// ############# CONFIGURAÇÃO #############
+// COLE AQUI A URL DO SEU SITE NETLIFY
+const NETLIFY_URL = "https://acertodefrete.netlify.app/"; 
+// #########################################
+
 // ID da sua pasta no Google Drive para salvar as fotos das notas fiscais.
 const ID_PASTA_FOTOS = "1fKRyqP1-b34sflAxuWPs_zYCZrfslcvu";
 // ID da sua planilha. O script pega automaticamente da planilha onde está contido.
@@ -5,9 +10,14 @@ const ID_PLANILHA = SpreadsheetApp.getActiveSpreadsheet().getId();
 
 // Função que é executada quando o aplicativo envia dados (via POST)
 function doPost(e) {
+
+  // Lógica para lidar com a verificação de CORS (Preflight)
+  if (e.request && e.request.method === 'options') {
+    return handleOptions();
+  }
+
   try {
     const dados = JSON.parse(e.postData.contents);
-
     const planilha = SpreadsheetApp.openById(ID_PLANILHA);
     const aba = planilha.getSheetByName("controle") || planilha.insertSheet("controle");
 
@@ -19,7 +29,7 @@ function doPost(e) {
 
     // Montar a linha de dados para a planilha
     const novaLinha = [
-      new Date(), // Timestamp de quando o dado foi recebido
+      new Date(), // Timestamp
       dados.motorista,
       dados.placa,
       dados.origem,
@@ -33,27 +43,45 @@ function doPost(e) {
       dados.valorTonelada,
       dados.valorTotal,
       dados.dataDescarga,
-      dados.abastecimentos.map(a => JSON.stringify(a)).join('; '), // Converte array de objetos para texto
-      dados.manutencoes.map(m => JSON.stringify(m)).join('; '), // Converte array de objetos para texto
-      urlFotoNfAbastecimento.join(', '), // URLs das fotos
-      urlFotoNfManutencao.join(', ') // URLs das fotos
+      dados.abastecimentos.map(a => JSON.stringify(a)).join('; '),
+      dados.manutencoes.map(m => JSON.stringify(m)).join('; '),
+      urlFotoNfAbastecimento.join(', '),
+      urlFotoNfManutencao.join(', ')
     ];
 
     aba.appendRow(novaLinha);
 
-    // Retorna uma resposta de sucesso para o aplicativo
-    return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Dados recebidos!" })).setMimeType(ContentService.MimeType.JSON);
+    // Retorna uma resposta de sucesso COM cabeçalhos CORS
+    return createJsonResponse({ status: "success", message: "Dados recebidos!" });
 
   } catch (error) {
-    // Em caso de erro, retorna uma mensagem de erro
-    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: error.toString() })).setMimeType(ContentService.MimeType.JSON);
+    // Retorna uma mensagem de erro COM cabeçalhos CORS
+    return createJsonResponse({ status: "error", message: error.toString() });
   }
 }
 
-// Função para processar e salvar as fotos no Drive
+// Função para lidar com requisições OPTIONS (CORS Preflight)
+function handleOptions() {
+  const output = ContentService.createTextOutput();
+  output.setMimeType(ContentService.MimeType.TEXT);
+  output.setContent("OK");
+  output.setHeader("Access-Control-Allow-Origin", NETLIFY_URL);
+  output.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  output.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  return output;
+}
+
+// Função auxiliar para criar respostas JSON com cabeçalhos CORS
+function createJsonResponse(data) {
+  const output = ContentService.createTextOutput(JSON.stringify(data));
+  output.setMimeType(ContentService.MimeType.JSON);
+  output.setHeader("Access-Control-Allow-Origin", NETLIFY_URL);
+  return output;
+}
+
+// Função para processar e salvar as fotos no Drive (sem alteração)
 function processarFotos(fotosArray, prefixo) {
   if (!fotosArray || fotosArray.length === 0) return [];
-  
   const pasta = DriveApp.getFolderById(ID_PASTA_FOTOS);
   const urls = [];
 
@@ -61,14 +89,13 @@ function processarFotos(fotosArray, prefixo) {
     const dadosImagem = Utilities.base64Decode(foto.split(',')[1]);
     const blob = Utilities.newBlob(dadosImagem, 'image/jpeg', `${prefixo}_${new Date().getTime()}_${index}.jpg`);
     const arquivo = pasta.createFile(blob);
-    arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); // Torna o arquivo visível por link
+    arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     urls.push(arquivo.getUrl());
   });
-
   return urls;
 }
 
-// Função para verificar e criar os cabeçalhos na planilha se não existirem
+// Função para verificar cabeçalhos (sem alteração)
 function verificarCabecalhos(aba) {
   if (aba.getLastRow() === 0) {
     const cabecalhos = [

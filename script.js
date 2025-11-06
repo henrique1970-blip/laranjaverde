@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             } else {
                  // Fallback para navegadores sem Background Sync
-                 attemptSync();
+                // attemptSync(); // função removida porque não funciona em todos os navegadores
             }
         };
 
