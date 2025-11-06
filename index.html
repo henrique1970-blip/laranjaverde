@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Fretes</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4CAF50"/>
+</head>
+<body>
+
+    <div id="custom-alert" class="alert-modal" style="display:none;">
+        <div class="alert-content">
+            <span class="close-btn">&times;</span>
+            <p id="alert-message"></p>
+        </div>
+    </div>
+
+    <div id="login-screen" class="container">
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOEAAADhCAMAAAAJbSJIAAAAbFBMVEX///8zMzMmJib29vYAAACtra38/PyIiIimpqbs7Ozn5+fExMStra3Dw8N9fX0XFxcPDw9PT08vLy8oKChWVlagoKAZGRmSkpKpqamBgYFAQEC7u7tOTk5fX19ubm5wcHBERERdXV1mZmZ5eXlISEhK4sQJAAACZ0lEQVR4nO3d23KaQBSFYUTsNihBC0VEAd/9D1lpc2pmaJLTRk7nvb/vI4i3hCwkEcbjAwAAAAAAAAAAAAAAAAAAAADws+q8vq6vr+v2+nM5XJbL5XKxWJbL/b2cHuYjA3yXz/Opvr6u0+n8rK7r29vbw+HweDze39+fTCaTyWQymVwuF4vF4XA4PDw83t/f2+220WjE5XJ5PF6n07mua6vVam17+UzmYxU+349EIpFIRCKRSCQSiUQikUgkEolEIpFIRCKRSCQSiUQikUgkEolEIpFIRCKRSCQSiUQikUgkEolEIpFIRCKRSCQSiUQikUgkEolEIpFIRCKRSCTk8fn8fr+fn5+lUimRSJRIJJZKpVJpNBqNRqPRaDQajUaj0el0Op3O5XJ5PJ6lUqlUKpVKpVKpVCqVv/X7/f5+P/8I/G6pVOoY+lqtpn+ZfzEej/dLpVLf0JdKpfrXmH/E5/MKhUJDQ18oFDIfz18UCgV/jCgUCoVCob+hL5fLhULhM/z1XC4XCoVCoVDoG/oaDAYDAYP/jK/BYDAYDAaDP0ZDAYPBYDAY+hv6crkcDAZ/z1d8Ph8MBoPB4H8xDAaDwWAwGPob+vP5DAaD/8ZXIBAYDAYDAYP/xbAYDAYDAYGhv6EfDAaDwWAwGAwGg8FgMBgMBgPBgJ+h7+d3+j84DAaDwWAwGAwGg8FgMBgMBgMBg8FgMBgMBgMBg8FgMBgMBoPB4H/pvwcEAwAAAAAAAAAAAAAAAAAAAADAs/oCvj+v0dG2AAAAAElFTkSuQmCC" alt="Logo Transportadora" class="logo">
+        <input type="text" id="input-motorista-login" placeholder="Digite seu nome" required>
+        <button id="btn-entrar">Adicionar Frete</button>
+        <button id="btn-sair">Sair do Aplicativo</button>
+    </div>
+    
+    <div id="main-form" class="container" style="display:none;">
+        <form id="frete-form">
+            <h2>Dados do Frete</h2>
+            <label for="motorista">Motorista:</label>
+            <input type="text" id="motorista" name="motorista" readonly>
+            
+            <label for="placa">Placa do Caminhão:</label>
+            <input type="text" id="placa" name="placa" required>
+
+            <fieldset>
+                <legend>1. Frete de Ida</legend>
+                <input type="text" id="origem" placeholder="Origem" required>
+                <input type="text" id="destino" placeholder="Destino" required>
+                <div>
+                    <label>Transportadora:</label>
+                    <input type="radio" id="laranja-verde" name="transportadora" value="Laranja Verde" checked>
+                    <label for="laranja-verde">Laranja Verde</label>
+                    <input type="radio" id="outra" name="transportadora" value="outra">
+                    <label for="outra">Outra</label>
+                    <input type="text" id="outra-transportadora" placeholder="Nome da outra transportadora" style="display:none;">
+                </div>
+                <input type="text" id="produto" placeholder="Produto Transportado" required>
+                <label for="data-saida">Data de Saída:</label>
+                <input type="date" id="data-saida" required>
+                <input type="number" id="km-saida" placeholder="Quilometragem de Saída" required>
+                <input type="number" id="km-chegada" placeholder="Quilometragem de Chegada" required>
+                <input type="number" step="0.01" id="peso-saida" placeholder="Peso de Saída (toneladas)" required>
+                <input type="number" step="0.01" id="valor-tonelada" placeholder="Valor por Tonelada (R$)" required>
+                <input type="text" id="valor-total" placeholder="Valor Total (R$)" readonly>
+                <label for="data-descarga">Data da Descarga:</label>
+                <input type="date" id="data-descarga" required>
+            </fieldset>
+
+            <fieldset>
+                <legend>2. Abastecimentos</legend>
+                <div id="abastecimentos-container"></div>
+                <button type="button" id="add-abastecimento">Adicionar Abastecimento</button>
+            </fieldset>
+
+            <fieldset>
+                <legend>3. Manutenções</legend>
+                <div id="manutencoes-container"></div>
+                <button type="button" id="add-manutencao">Adicionar Manutenção</button>
+            </fieldset>
+
+            <button type="submit" class="btn-submit">Salvar e Enviar</button>
+        </form>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
