@@ -197,39 +197,63 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Função para salvar dados no IndexedDB
-    function saveDataLocally(data) {
-        if (!db) {
-            showAlert('Banco de dados local não está pronto.', 'error');
-            return;
-        }
-        const transaction = db.transaction(['fretes'], 'readwrite');
-        const store = transaction.objectStore('fretes');
-        const request = store.add(data);
-
-        request.onsuccess = () => {
-            showAlert('Dados salvos localmente! Serão enviados assim que houver conexão.', 'success');
-            form.reset(); // Limpa o formulário
-            abastecimentosContainer.innerHTML = ''; // Limpa seções dinâmicas
-            manutencoesContainer.innerHTML = '';   // Limpa seções dinâmicas
-            
-            // Disparar o evento de sincronização
-            if ('serviceWorker' in navigator && 'SyncManager' in window) {
-                navigator.serviceWorker.ready.then(reg => {
-                    reg.sync.register('sync-fretes');
-                });
-            } else {
-                 // Fallback para navegadores sem Background Sync
-                // attemptSync(); // função removida porque não funciona em todos os navegadores
-            }
-        };
-
-        request.onerror = (event) => {
-            showAlert('Erro ao salvar os dados localmente.', 'error');
-            console.error('Erro no IndexedDB:', event.target.error);
-        };
+function saveDataLocally(data) {
+    if (!db) {
+        showAlert('Banco de dados local não está pronto.', 'error');
+        return;
     }
-});
+    const transaction = db.transaction(['fretes'], 'readwrite');
+    const store = transaction.objectStore('fretes');
+    const request = store.add(data);
 
+    request.onsuccess = () => {
+        showAlert('Dados salvos localmente! Tentando enviar...', 'success');
+        form.reset();
+        abastecimentosContainer.innerHTML = '';
+        manutencoesContainer.innerHTML = '';
+
+        // TENTA ENVIAR IMEDIATAMENTE
+        attemptImmediateSync(data);
+    };
+
+    request.onerror = (event) => {
+        showAlert('Erro ao salvar os dados localmente.', 'error');
+        console.error('Erro no IndexedDB:', event.target.error);
+    };
+}
+
+// Função para tentar enviar imediatamente
+function attemptImmediateSync(data) {
+    fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' },
+        mode: 'cors'
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('Falha no servidor');
+        return response.json();
+    })
+    .then(() => {
+        // Remove do IndexedDB se enviado com sucesso
+        removeFromLocalDB(data.id);
+        showAlert('Dados enviados com sucesso!', 'success');
+    })
+    .catch(err => {
+        console.log('Envio imediato falhou (será sincronizado depois):', err);
+        // Deixa no IndexedDB para o sync
+        if ('serviceWorker' in navigator && 'SyncManager' in window) {
+            navigator.serviceWorker.ready.then(reg => reg.sync.register('sync-fretes'));
+        }
+    });
+}
+
+function removeFromLocalDB(id) {
+    if (!db) return;
+    const transaction = db.transaction(['fretes'], 'readwrite');
+    const store = transaction.objectStore('fretes');
+    store.delete(id);
+}
 
 // --- FUNÇÕES AUXILIARES ---
 
