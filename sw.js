@@ -1,5 +1,9 @@
+
+
+
 // ############# CONFIGURAÇÃO #############
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxUpZ7MO8eBOvOtqsjjc4ypUrwBM0VySkWvUyAoiiPBbyXmkzjCBn5Ve1cTwtoq2FTg8g/exec";
+// COLE AQUI A URL DO SEU SCRIPT PUBLICADO
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxUpZ7MO8eBOvOtqsjjc4ypUrwBM0VySkWvUyAoiiPBbyXmkzjCBn5Ve1cTwtoq2FTg8g/exec"; 
 // #########################################
 
 const CACHE_NAME = 'fretes-cache-v1';
@@ -13,14 +17,19 @@ const urlsToCache = [
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(cache => cache.addAll(urlsToCache))
+            .then(cache => {
+                console.log('Cache aberto');
+                return cache.addAll(urlsToCache);
+            })
     );
 });
 
 self.addEventListener('fetch', event => {
     event.respondWith(
         caches.match(event.request)
-            .then(response => response || fetch(event.request))
+            .then(response => {
+                return response || fetch(event.request);
+            })
     );
 });
 
@@ -42,12 +51,14 @@ function syncFretes() {
             getAllRequest.onsuccess = () => {
                 const fretesParaSincronizar = getAllRequest.result;
                 if (fretesParaSincronizar.length > 0) {
+                    console.log('Enviando dados pendentes:', fretesParaSincronizar);
                     sendDataToServer(fretesParaSincronizar).then(resolve).catch(reject);
                 } else {
+                    console.log('Nenhum dado para sincronizar.');
                     resolve();
                 }
             };
-            getAllRequest.onerror = (err) => reject(err);
+             getAllRequest.onerror = (err) => reject(err);
         };
         request.onerror = (err) => reject(err);
     });
@@ -58,42 +69,33 @@ function sendDataToServer(fretes) {
         return fetch(APPS_SCRIPT_URL, {
             method: 'POST',
             body: JSON.stringify(frete),
-            headers: { 'Content-Type': 'application/json' },
-            mode: 'cors'
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            return response.json().then(() => frete.id);
-        })
-        .then(id => removeFromLocalDB(id))
-        .catch(error => {
-            console.error('Falha ao enviar frete:', error);
-            return Promise.reject(error); // Rejeita para retentativa
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Apps Script espera text/plain para doPost
+            mode: 'no-cors' // Essencial para evitar erros de CORS com Apps Script
+        }).then(response => {
+            // Como estamos em modo no-cors, não podemos ler a resposta.
+            // Assumimos sucesso e removemos do DB local.
+            console.log('Dado enviado (provavelmente com sucesso):', frete.id);
+            return removeFromLocalDB(frete.id);
         });
     });
 
-    return Promise.allSettled(promises).then(results => {
-        const failed = results.filter(r => r.status === 'rejected');
-        if (failed.length > 0) {
-            return Promise.reject('Alguns envios falharam');
-        }
-        return Promise.resolve();
-    });
+    return Promise.all(promises);
 }
 
 function removeFromLocalDB(id) {
-    return new Promise((resolve, reject) => {
+     return new Promise((resolve, reject) => {
         const request = indexedDB.open('fretesDB', 1);
         request.onsuccess = (event) => {
             const db = event.target.result;
             const transaction = db.transaction(['fretes'], 'readwrite');
             const store = transaction.objectStore('fretes');
             const deleteRequest = store.delete(id);
-            deleteRequest.onsuccess = () => resolve();
+            deleteRequest.onsuccess = () => {
+                console.log(`Registro ${id} removido do IndexedDB.`);
+                resolve();
+            };
             deleteRequest.onerror = (err) => reject(err);
         };
         request.onerror = (err) => reject(err);
-    });
+     });
 }

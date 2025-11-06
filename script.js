@@ -1,7 +1,6 @@
 // ############# CONFIGURAÇÃO #############
 // COLE AQUI A URL DO SEU SCRIPT PUBLICADO
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxUpZ7MO8eBOvOtqsjjc4ypUrwBM0VySkWvUyAoiiPBbyXmkzjCBn5Ve1cTwtoq2FTg8g/exec";
-
 // #########################################
 
 
@@ -104,16 +103,10 @@ document.addEventListener('DOMContentLoaded', () => {
         manutencoesContainer.insertAdjacentHTML('beforeend', createManutencaoHTML(index));
     });
 
-
     // --- SUBMISSÃO DO FORMULÁRIO ---
-    form.addEventListener('submit', async (event) => { // Adicionado "async" aqui
+    form.addEventListener('submit', (event) => {
         event.preventDefault();
         
-        // Desabilitar o botão para evitar cliques duplos
-        const submitButton = form.querySelector('button[type="submit"]');
-        submitButton.disabled = true;
-        submitButton.textContent = 'Salvando...';
-
         // Coletar todos os dados do formulário
         const dadosFrete = {
             id: new Date().getTime(), // ID único para o IndexedDB
@@ -132,14 +125,13 @@ document.addEventListener('DOMContentLoaded', () => {
             dataDescarga: document.getElementById('data-descarga').value,
             abastecimentos: [],
             manutencoes: [],
-            fotosAbastecimento: [], // Será preenchido pelas promessas
-            fotosManutencao: [] // Será preenchido pelas promessas
+            fotosAbastecimento: [],
+            fotosManutencao: []
         };
-
-        // 1. Coletar promessas de Abastecimento (fotos)
-        const promessasFotosAbastecimento = Array.from(document.querySelectorAll('.abastecimento-item')).map(async (item) => {
+        
+        // Coletar dados de abastecimentos
+        document.querySelectorAll('.abastecimento-item').forEach(async (item) => {
             const fotoInput = item.querySelector('input[type="file"]');
-            // Adiciona os dados de texto (síncrono)
             dadosFrete.abastecimentos.push({
                 valor: item.querySelector('[data-field="valor"]').value,
                 data: item.querySelector('[data-field="data"]').value,
@@ -148,112 +140,65 @@ document.addEventListener('DOMContentLoaded', () => {
                 litros: item.querySelector('[data-field="litros"]').value,
                 km: item.querySelector('[data-field="km"]').value,
             });
-            
-            // Retorna a promessa da foto (assíncrono)
             if (fotoInput.files[0]) {
-                return toBase64(fotoInput.files[0]);
+                 const base64 = await toBase64(fotoInput.files[0]);
+                 dadosFrete.fotosAbastecimento.push(base64);
             }
-            return null; // Retorna null se não houver foto
         });
 
-        // 2. Coletar promessas de Manutenção (fotos)
-        const promessasFotosManutencao = Array.from(document.querySelectorAll('.manutencao-item')).map(async (item) => {
-            const fotoInput = item.querySelector('input[type="file"]');
-            // Adiciona os dados de texto (síncrono)
+        // Coletar dados de manutenções
+        document.querySelectorAll('.manutencao-item').forEach(async (item) => {
+             const fotoInput = item.querySelector('input[type="file"]');
             dadosFrete.manutencoes.push({
                 valor: item.querySelector('[data-field="valor"]').value,
                 data: item.querySelector('[data-field="data"]').value,
                 local: item.querySelector('[data-field="local"]').value,
                 servico: item.querySelector('[data-field="servico"]').value,
             });
-            
-            // Retorna a promessa da foto (assíncrono)
             if (fotoInput.files[0]) {
-                return toBase64(fotoInput.files[0]);
+                 const base64 = await toBase64(fotoInput.files[0]);
+                 dadosFrete.fotosManutencao.push(base64);
             }
-            return null;
         });
 
-        // 3. Aguardar TODAS as promessas de conversão de fotos
-        try {
-            const fotosAbastecimentoBase64 = await Promise.all(promessasFotosAbastecimento);
-            const fotosManutencaoBase64 = await Promise.all(promessasFotosManutencao);
-
-            // 4. Popular os arrays de fotos (filtrando os nulos)
-            dadosFrete.fotosAbastecimento = fotosAbastecimentoBase64.filter(foto => foto !== null);
-            dadosFrete.fotosManutencao = fotosManutencaoBase64.filter(foto => foto !== null);
-
-            // 5. Agora sim, salvar os dados completos localmente
-            saveDataLocally(dadosFrete);
-
-        } catch (error) {
-            console.error("Erro ao converter fotos para Base64:", error);
-            showAlert('Erro ao processar as fotos. Tente novamente.', 'error');
-        } finally {
-            // Reabilitar o botão
-            submitButton.disabled = false;
-            submitButton.textContent = 'Salvar e Enviar';
-        }
+        // Salvar no IndexedDB
+        saveDataLocally(dadosFrete);
     });
 
     // Função para salvar dados no IndexedDB
-function saveDataLocally(data) {
-    if (!db) {
-        showAlert('Banco de dados local não está pronto.', 'error');
-        return;
-    }
-    const transaction = db.transaction(['fretes'], 'readwrite');
-    const store = transaction.objectStore('fretes');
-    const request = store.add(data);
-
-    request.onsuccess = () => {
-        showAlert('Dados salvos localmente! Tentando enviar...', 'success');
-        form.reset();
-        abastecimentosContainer.innerHTML = '';
-        manutencoesContainer.innerHTML = '';
-
-        // TENTA ENVIAR IMEDIATAMENTE
-        attemptImmediateSync(data);
-    };
-
-    request.onerror = (event) => {
-        showAlert('Erro ao salvar os dados localmente.', 'error');
-        console.error('Erro no IndexedDB:', event.target.error);
-    };
-}
-
-// Função para tentar enviar imediatamente
-function attemptImmediateSync(data) {
-    fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify(data),
-        headers: { 'Content-Type': 'application/json' },
-        mode: 'cors'
-    })
-    .then(response => {
-        if (!response.ok) throw new Error('Falha no servidor');
-        return response.json();
-    })
-    .then(() => {
-        // Remove do IndexedDB se enviado com sucesso
-        removeFromLocalDB(data.id);
-        showAlert('Dados enviados com sucesso!', 'success');
-    })
-    .catch(err => {
-        console.log('Envio imediato falhou (será sincronizado depois):', err);
-        // Deixa no IndexedDB para o sync
-        if ('serviceWorker' in navigator && 'SyncManager' in window) {
-            navigator.serviceWorker.ready.then(reg => reg.sync.register('sync-fretes'));
+    function saveDataLocally(data) {
+        if (!db) {
+            showAlert('Banco de dados local não está pronto.', 'error');
+            return;
         }
-    });
-}
+        const transaction = db.transaction(['fretes'], 'readwrite');
+        const store = transaction.objectStore('fretes');
+        const request = store.add(data);
 
-function removeFromLocalDB(id) {
-    if (!db) return;
-    const transaction = db.transaction(['fretes'], 'readwrite');
-    const store = transaction.objectStore('fretes');
-    store.delete(id);
-}
+        request.onsuccess = () => {
+            showAlert('Dados salvos localmente! Serão enviados assim que houver conexão.', 'success');
+            form.reset(); // Limpa o formulário
+            abastecimentosContainer.innerHTML = ''; // Limpa seções dinâmicas
+            manutencoesContainer.innerHTML = '';   // Limpa seções dinâmicas
+            
+            // Disparar o evento de sincronização
+            if ('serviceWorker' in navigator && 'SyncManager' in window) {
+                navigator.serviceWorker.ready.then(reg => {
+                    reg.sync.register('sync-fretes');
+                });
+            } else {
+                 // Fallback para navegadores sem Background Sync
+                 attemptSync();
+            }
+        };
+
+        request.onerror = (event) => {
+            showAlert('Erro ao salvar os dados localmente.', 'error');
+            console.error('Erro no IndexedDB:', event.target.error);
+        };
+    }
+});
+
 
 // --- FUNÇÕES AUXILIARES ---
 
