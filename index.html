@@ -1,76 +1,111 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controle de Fretes</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#4CAF50"/>
+    <link rel="stylesheet" href="logo_tlv_base64.css">
 </head>
 <body>
 
-    <div id="custom-alert" class="alert-modal" style="display:none;">
-        <div class="alert-content">
-            <span class="close-btn">&times;</span>
-            <p id="alert-message"></p>
+    <div class="container">
+        <div id="screen-entry" class="screen active">
+            <div class="logo"></div>
+            <h1>Controle de Viagem</h1>
+            <form id="entry-form">
+                <label for="motorista-nome">Nome do Motorista:</label>
+                <input type="text" id="motorista-nome" required>
+
+                <label for="placa-caminhao">Placa do Caminhão:</label>
+                <input type="text" id="placa-caminhao" required>
+
+                <label for="data-atual">Data:</label>
+                <input type="text" id="data-atual" readonly>
+
+                <label for="codigo-viagem">Código da Viagem:</label>
+                <input type="text" id="codigo-viagem" readonly>
+
+                <button type="button" id="btn-iniciar-frete" class="btn btn-green">Adicionar Novo Frete</button>
+                <button type="button" id="btn-editar-frete" class="btn btn-orange">Editar Frete (Em breve)</button>
+            </form>
         </div>
-    </div>
 
-    <div id="login-screen" class="container">
-        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOEAAADhCAMAAAAJbSJIAAAAbFBMVEX///8zMzMmJib29vYAAACtra38/PyIiIimpqbs7Ozn5+fExMStra3Dw8N9fX0XFxcPDw9PT08vLy8oKChWVlagoKAZGRmSkpKpqamBgYFAQEC7u7tOTk5fX19ubm5wcHBERERdXV1mZmZ5eXlISEhK4sQJAAACZ0lEQVR4nO3d23KaQBSFYUTsNihBC0VEAd/9D1lpc2pmaJLTRk7nvb/vI4i3hCwkEcbjAwAAAAAAAAAAAAAAAAAAAADws+q8vq6vr+v2+nM5XJbL5XKxWJbL/b2cHuYjA3yXz/Opvr6u0+n8rK7r29vbw+HweDze39+fTCaTyWQymVwuF4vF4XA4PDw83t/f2+220WjE5XJ5PF6n07mua6vVam17+UzmYxU+349EIpFIRCKRSCQSiUQikUgkEolEIpFIRCKRSCQSiUQikUgkEolEIpFIRCKRSCQSiUQikUgkEolEIpFIRCKRSCQSiUQikUgkEolEIpFIRCKRSCTk8fn8fr+fn5+lUimRSJRIJJZKpVJpNBqNRqPRaDQajUaj0el0Op3O5XJ5PJ6lUqlUKpVKpVKpVCqVv/X7/f5+P/8I/G6pVOoY+lqtpn+ZfzEej/dLpVLf0JdKpfrXmH/E5/MKhUJDQ18oFDIfz18UCgV/jCgUCoVCob+hL5fLhULhM/z1XC4XCoVCoVDoG/oaDAYDAYP/jK/BYDAYDAaDP0ZDAYPBYDAY+hv6crkcDAZ/z1d8Ph8MBoPB4H8xDAaDwWAwGPob+vP5DAaD/8ZXIBAYDAYDAYP/xbAYDAYDAYGhv6EfDAaDwWAwGAwGg8FgMBgMBgPBgJ+h7+d3+j84DAaDwWAwGAwGg8FgMBgMBgMBg8FgMBgMBgMBg8FgMBgMBoPB4H/pvwcEAwAAAAAAAAAAAAAAAAAAAADAs/oCvj+v0dG2AAAAAElFTkSuQmCC" alt="Logo Transportadora" class="logo">
-        <input type="text" id="input-motorista-login" placeholder="Digite seu nome" required>
-        <button id="btn-entrar">Adicionar Frete</button>
-        <button id="btn-sair">Sair do Aplicativo</button>
-    </div>
-    
-    <div id="main-form" class="container" style="display:none;">
-        <form id="frete-form">
-            <h2>Dados do Frete</h2>
-            <label for="motorista">Motorista:</label>
-            <input type="text" id="motorista" name="motorista" readonly>
-            
-            <label for="placa">Placa do Caminhão:</label>
-            <input type="text" id="placa" name="placa" required>
+        <div id="screen-form" class="screen">
+            <form id="frete-form">
+                <h2>Dados do Frete</h2>
 
-            <fieldset>
-                <legend>1. Frete de Ida</legend>
-                <input type="text" id="origem" placeholder="Origem" required>
-                <input type="text" id="destino" placeholder="Destino" required>
-                <div>
-                    <label>Transportadora:</label>
-                    <input type="radio" id="laranja-verde" name="transportadora" value="Laranja Verde" checked>
-                    <label for="laranja-verde">Laranja Verde</label>
-                    <input type="radio" id="outra" name="transportadora" value="outra">
-                    <label for="outra">Outra</label>
-                    <input type="text" id="outra-transportadora" placeholder="Nome da outra transportadora" style="display:none;">
+                <label for="form-motorista">Motorista:</label>
+                <input type="text" id="form-motorista" readonly>
+
+                <label for="form-frete-id">Código do Frete:</label>
+                <input type="text" id="form-frete-id" readonly>
+
+                <label for="form-origem">Origem:</label>
+                <input type="text" id="form-origem" required>
+
+                <label for="form-destino">Destino:</label>
+                <input type="text" id="form-destino" required>
+
+                <fieldset>
+                    <legend>Transportadora</legend>
+                    <input type="radio" id="radio-transportadora-lv" name="transportadora-tipo" value="Laranja Verde" checked>
+                    <label for="radio-transportadora-lv">Laranja Verde</label>
+                    
+                    <input type="radio" id="radio-transportadora-outra" name="transportadora-tipo" value="Outra">
+                    <label for="radio-transportadora-outra">Outra</label>
+                    
+                    <input type="text" id="form-transportadora-outra-nome" placeholder="Qual o nome da outra transportadora?" style="display:none;">
+                </fieldset>
+
+                <label for="form-produto">Produto Transportado:</label>
+                <input type="text" id="form-produto" required>
+
+                <label for="form-data-saida">Data de Saída:</label>
+                <input type="date" id="form-data-saida" required>
+
+                <label for="form-km-saida">Quilometragem de Saída:</label>
+                <input type="number" id="form-km-saida" required>
+
+                <label for="form-km-chegada">Quilometragem de Chegada:</label>
+                <input type="number" id="form-km-chegada">
+
+                <label for="form-peso-saida">Peso de Saída (toneladas):</label>
+                <input type="number" step="0.01" id="form-peso-saida" required>
+
+                <label for="form-valor-tonelada">Valor por Tonelada (R$):</label>
+                <input type="number" step="0.01" id="form-valor-tonelada" required>
+
+                <label for="form-valor-total">Valor Total (R$):</label>
+                <input type="text" id="form-valor-total" readonly>
+
+                <label for="form-data-descarga">Data da Descarga:</label>
+                <input type="date" id="form-data-descarga">
+
+                <fieldset>
+                    <legend>Abastecimentos</legend>
+                    <div id="abastecimentos-lista"></div>
+                    <button type="button" id="btn-add-abastecimento" class="btn btn-green-small">Adicionar Abastecimento</button>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Manutenções</legend>
+                    <div id="manutencoes-lista"></div>
+                    <button type="button" id="btn-add-manutencao" class="btn btn-green-small">Adicionar Manutenção</button>
+                </fieldset>
+
+                <div class="form-actions">
+                    <button type="submit" id="btn-salvar" class="btn btn-green">Salvar e Enviar</button>
+                    <button type="button" id="btn-voltar" class="btn btn-orange">Voltar para Tela Inicial</button>
                 </div>
-                <input type="text" id="produto" placeholder="Produto Transportado" required>
-                <label for="data-saida">Data de Saída:</label>
-                <input type="date" id="data-saida" required>
-                <input type="number" id="km-saida" placeholder="Quilometragem de Saída" required>
-                <input type="number" id="km-chegada" placeholder="Quilometragem de Chegada" required>
-                <input type="number" step="0.01" id="peso-saida" placeholder="Peso de Saída (toneladas)" required>
-                <input type="number" step="0.01" id="valor-tonelada" placeholder="Valor por Tonelada (R$)" required>
-                <input type="text" id="valor-total" placeholder="Valor Total (R$)" readonly>
-                <label for="data-descarga">Data da Descarga:</label>
-                <input type="date" id="data-descarga" required>
-            </fieldset>
 
-            <fieldset>
-                <legend>2. Abastecimentos</legend>
-                <div id="abastecimentos-container"></div>
-                <button type="button" id="add-abastecimento">Adicionar Abastecimento</button>
-            </fieldset>
+            </form>
+        </div>
 
-            <fieldset>
-                <legend>3. Manutenções</legend>
-                <div id="manutencoes-container"></div>
-                <button type="button" id="add-manutencao">Adicionar Manutenção</button>
-            </fieldset>
-
-            <button type="submit" class="btn-submit">Salvar e Enviar</button>
-        </form>
+        <div id="loading-overlay" style="display: none;">
+            <div class="spinner"></div>
+            <p>Enviando dados...</p>
+        </div>
     </div>
 
     <script src="script.js"></script>

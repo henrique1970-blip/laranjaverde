@@ -1,308 +1,296 @@
-// ############# CONFIGURAÇÃO #############
-// COLE AQUI A URL DO SEU SCRIPT PUBLICADO
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw48rzi3T9hTp-K-3WqDG2lvq_U89wKD2kYd3og8Xq0MN7qdxT9A31GPTFKcL-FHGSLpA/exec";
-// #########################################
+document.addEventListener("DOMContentLoaded", () => {
 
+    // *** IMPORTANTE ***
+    // Cole aqui o URL do seu Google Apps Script (que você obterá na Etapa 5)
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbj19eTq9hIC0faZ2fa2Q0sQ0cz1n3S3wcWzlrT-msCDw5j7c1jPoIyYQ3oucTYh-xRw/exec';
 
-// Espera o DOM carregar para executar o código
-document.addEventListener('DOMContentLoaded', () => {
+    // Referências de Tela
+    const screenEntry = document.getElementById('screen-entry');
+    const screenForm = document.getElementById('screen-form');
+    const loadingOverlay = document.getElementById('loading-overlay');
 
-    // Seleção de Elementos do DOM
-    const loginScreen = document.getElementById('login-screen');
-    const mainForm = document.getElementById('main-form');
-    const btnEntrar = document.getElementById('btn-entrar');
-    const btnSair = document.getElementById('btn-sair');
-    const inputMotoristaLogin = document.getElementById('input-motorista-login');
-    const motoristaField = document.getElementById('motorista');
+    // Elementos da Tela de Entrada
+    const entryForm = document.getElementById('entry-form');
+    const motoristaNomeInput = document.getElementById('motorista-nome');
+    const placaCaminhaoInput = document.getElementById('placa-caminhao');
+    const dataAtualInput = document.getElementById('data-atual');
+    const codigoViagemInput = document.getElementById('codigo-viagem');
+    const btnIniciarFrete = document.getElementById('btn-iniciar-frete');
+
+    // Elementos da Tela de Formulário
+    const freteForm = document.getElementById('frete-form');
+    const formMotorista = document.getElementById('form-motorista');
+    const formFreteId = document.getElementById('form-frete-id');
+    const radioTransportadoraOutra = document.getElementById('radio-transportadora-outra');
+    const radioTransportadoraLV = document.getElementById('radio-transportadora-lv');
+    const inputTransportadoraOutraNome = document.getElementById('form-transportadora-outra-nome');
     
-    const form = document.getElementById('frete-form');
-    const pesoSaidaInput = document.getElementById('peso-saida');
-    const valorToneladaInput = document.getElementById('valor-tonelada');
-    const valorTotalInput = document.getElementById('valor-total');
+    const pesoSaidaInput = document.getElementById('form-peso-saida');
+    const valorToneladaInput = document.getElementById('form-valor-tonelada');
+    const valorTotalInput = document.getElementById('form-valor-total');
 
-    const transportadoraOutraRadio = document.getElementById('outra');
-    const transportadoraLVRadio = document.getElementById('laranja-verde');
-    const outraTransportadoraInput = document.getElementById('outra-transportadora');
-
-    const btnAddAbastecimento = document.getElementById('add-abastecimento');
-    const abastecimentosContainer = document.getElementById('abastecimentos-container');
+    const btnAddAbastecimento = document.getElementById('btn-add-abastecimento');
+    const abastecimentosLista = document.getElementById('abastecimentos-lista');
     
-    const btnAddManutencao = document.getElementById('add-manutencao');
-    const manutencoesContainer = document.getElementById('manutencoes-container');
+    const btnAddManutencao = document.getElementById('btn-add-manutencao');
+    const manutencoesLista = document.getElementById('manutencoes-lista');
 
-    // --- LÓGICA DE PERSISTÊNCIA DO FORMULÁRIO (localStorage) ---
-    const formInputs = document.querySelectorAll('#frete-form input[type="text"], #frete-form input[type="number"], #frete-form input[type="date"]');
-    const FORM_STATE_KEY = 'freteFormState';
+    const btnSalvar = document.getElementById('btn-salvar');
+    const btnVoltar = document.getElementById('btn-voltar');
 
-    // Salva o estado atual do formulário no localStorage
-    function saveFormState() {
-        const state = {};
-        formInputs.forEach(input => {
-            if (input.id) { // Só salva se tiver ID
-                state[input.id] = input.value;
-            }
+    let freteCounter = 0; // Contador para o número de ordem do frete
+
+    // --- FUNÇÕES AUXILIARES ---
+
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.remove('active');
         });
-        localStorage.setItem(FORM_STATE_KEY, JSON.stringify(state));
+        document.getElementById(screenId).classList.add('active');
     }
 
-    // Carrega o estado salvo do formulário do localStorage
-    function loadFormState() {
-        const savedState = localStorage.getItem(FORM_STATE_KEY);
-        if (savedState) {
-            console.log("Carregando estado salvo do formulário...");
-            const state = JSON.parse(savedState);
-            formInputs.forEach(input => {
-                if (input.id && state[input.id]) {
-                    input.value = state[input.id];
-                }
-            });
-            // Recalcular valor total se os campos existirem
-            if (pesoSaidaInput && valorToneladaInput && valorTotalInput) {
-                const peso = parseFloat(pesoSaidaInput.value) || 0;
-                const valorTon = parseFloat(valorToneladaInput.value) || 0;
-                valorTotalInput.value = (peso * valorTon).toFixed(2);
+    function formatarData(date) {
+        const dia = String(date.getDate()).padStart(2, '0');
+        const mes = String(date.getMonth() + 1).padStart(2, '0'); // Mês é base 0
+        const ano = date.getFullYear();
+        return `${ano}-${mes}-${dia}`; // Formato YYYY-MM-DD para inputs de data
+    }
+    
+    function obterDDMM(date) {
+        const dia = String(date.getDate()).padStart(2, '0');
+        const mes = String(date.getMonth() + 1).padStart(2, '0');
+        return `${dia}${mes}`;
+    }
+
+    // --- INICIALIZAÇÃO DA TELA DE ENTRADA ---
+    
+    function inicializarEntrada() {
+        const hoje = new Date();
+        dataAtualInput.value = formatarData(hoje);
+        
+        function gerarCodigoViagem() {
+            const nome = motoristaNomeInput.value.trim();
+            const primeiroNome = nome.split(' ')[0] || '';
+            
+            if (primeiroNome && placaCaminhaoInput.value.trim()) {
+                const ddmm = obterDDMM(hoje);
+                codigoViagemInput.value = `${primeiroNome}-${ddmm}`;
+                btnIniciarFrete.disabled = false;
+            } else {
+                codigoViagemInput.value = '';
+                btnIniciarFrete.disabled = true;
             }
         }
+
+        motoristaNomeInput.addEventListener('input', gerarCodigoViagem);
+        placaCaminhaoInput.addEventListener('input', gerarCodigoViagem);
+        
+        gerarCodigoViagem(); // Chamar uma vez para desabilitar o botão inicialmente
     }
-    // -----------------------------------------------------------
 
-    // Inicialização do IndexedDB
-    let db;
-    const request = indexedDB.open('fretesDB', 1);
+    // --- LÓGICA DA TELA DE FORMULÁRIO ---
 
-    request.onerror = (event) => showAlert('Erro ao abrir o banco de dados local.', 'error');
-    request.onsuccess = (event) => {
-        db = event.target.result;
-        console.log("Banco de dados local aberto com sucesso.");
-    };
-    request.onupgradeneeded = (event) => {
-        let db = event.target.result;
-        db.createObjectStore('fretes', { keyPath: 'id', autoIncrement: true });
-    };
+    btnIniciarFrete.addEventListener('click', () => {
+        freteCounter++; // Incrementa o número do frete
+        
+        // Preenche dados da tela de entrada
+        formMotorista.value = motoristaNomeInput.value;
+        formFreteId.value = `${codigoViagemInput.value}-${freteCounter}`;
+        
+        // Reseta o formulário
+        freteForm.reset(); 
+        abastecimentosLista.innerHTML = ''; // Limpa listas dinâmicas
+        manutencoesLista.innerHTML = '';
+        inputTransportadoraOutraNome.style.display = 'none'; // Reseta rádio
+        radioTransportadoraLV.checked = true;
 
-    // Registrar Service Worker para funcionalidade offline
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js')
-            .then(reg => console.log('Service Worker registrado com sucesso.'))
-            .catch(err => console.error('Erro ao registrar Service Worker:', err));
-    }
-    
-    // Carrega o estado do formulário salvo assim que o DOM estiver pronto
-    loadFormState();
+        // Re-preenche os campos não-editáveis
+        formMotorista.value = motoristaNomeInput.value;
+        formFreteId.value = `${codigoViagemInput.value}-${freteCounter}`;
 
-    // --- LÓGICA DE LOGIN E NAVEGAÇÃO ---
-    btnEntrar.addEventListener('click', () => {
-        const nomeMotorista = inputMotoristaLogin.value.trim();
-        if (nomeMotorista) {
-            motoristaField.value = nomeMotorista;
-            loginScreen.style.display = 'none';
-            mainForm.style.display = 'block';
-        } else {
-            showAlert('Por favor, identifique-se para continuar.', 'info');
+        showScreen('screen-form');
+    });
+
+    btnVoltar.addEventListener('click', () => {
+        if (confirm('Tem certeza que deseja voltar? Todos os dados não salvos serão perdidos.')) {
+            showScreen('screen-entry');
+            // Não resetamos o freteCounter, pois ele pertence à viagem atual
         }
     });
 
-    btnSair.addEventListener('click', () => {
-        if (confirm('Deseja realmente sair?')) {
-            window.close(); // Tenta fechar a aba
-        }
+    // Lógica do Rádio da Transportadora
+    radioTransportadoraOutra.addEventListener('change', () => {
+        inputTransportadoraOutraNome.style.display = 'block';
+        inputTransportadoraOutraNome.required = true;
+    });
+    radioTransportadoraLV.addEventListener('change', () => {
+        inputTransportadoraOutraNome.style.display = 'none';
+        inputTransportadoraOutraNome.required = false;
     });
 
-    // --- LÓGICA DO FORMULÁRIO ---
-    
-    // Cálculo automático do valor total
-    [pesoSaidaInput, valorToneladaInput].forEach(input => {
-        input.addEventListener('input', () => {
-            const peso = parseFloat(pesoSaidaInput.value) || 0;
-            const valorTon = parseFloat(valorToneladaInput.value) || 0;
-            valorTotalInput.value = (peso * valorTon).toFixed(2);
-        });
-    });
+    // Cálculo do Valor Total
+    function calcularValorTotal() {
+        const peso = parseFloat(pesoSaidaInput.value) || 0;
+        const valorTon = parseFloat(valorToneladaInput.value) || 0;
+        valorTotalInput.value = (peso * valorTon).toFixed(2);
+    }
+    pesoSaidaInput.addEventListener('input', calcularValorTotal);
+    valorToneladaInput.addEventListener('input', calcularValorTotal);
 
-    // Mostrar/ocultar campo de "outra transportadora"
-    transportadoraOutraRadio.addEventListener('change', () => {
-        outraTransportadoraInput.style.display = 'block';
-        outraTransportadoraInput.required = true;
-    });
-    transportadoraLVRadio.addEventListener('change', () => {
-        outraTransportadoraInput.style.display = 'none';
-        outraTransportadoraInput.required = false;
-    });
-
-    // Adicionar campos dinâmicos de abastecimento
+    // Adição Dinâmica de Abastecimento
     btnAddAbastecimento.addEventListener('click', () => {
-        const index = abastecimentosContainer.children.length;
-        abastecimentosContainer.insertAdjacentHTML('beforeend', createAbastecimentoHTML(index));
+        const index = abastecimentosLista.children.length;
+        const newItem = document.createElement('div');
+        newItem.classList.add('dynamic-item');
+        newItem.innerHTML = `
+            <h4>Abastecimento #${index + 1}</h4>
+            <label>Valor (R$):</label>
+            <input type="number" step="0.01" class="abastecimento-valor" required>
+            <label>Data:</label>
+            <input type="date" class="abastecimento-data" required>
+            <label>Local:</label>
+            <input type="text" class="abastecimento-local">
+            <label>Nome do Posto:</label>
+            <input type="text" class="abastecimento-posto">
+            <label>Litros:</label>
+            <input type="number" step="0.01" class="abastecimento-litros">
+            <label>Quilometragem:</label>
+            <input type="number" class="abastecimento-km">
+            <label>Foto da Nota:</label>
+            <input type="file" class="abastecimento-foto" accept="image/*">
+        `;
+        abastecimentosLista.appendChild(newItem);
     });
 
-    // Adicionar campos dinâmicos de manutenção
+    // Adição Dinâmica de Manutenção
     btnAddManutencao.addEventListener('click', () => {
-        const index = manutencoesContainer.children.length;
-        manutencoesContainer.insertAdjacentHTML('beforeend', createManutencaoHTML(index));
+        const index = manutencoesLista.children.length;
+        const newItem = document.createElement('div');
+        newItem.classList.add('dynamic-item');
+        newItem.innerHTML = `
+            <h4>Manutenção #${index + 1}</h4>
+            <label>Valor (R$):</label>
+            <input type="number" step="0.01" class="manutencao-valor" required>
+            <label>Data:</label>
+            <input type="date" class="manutencao-data" required>
+            <label>Local:</label>
+            <input type="text" class="manutencao-local">
+            <label>Serviço Prestado:</label>
+            <input type="text" class="manutencao-servico">
+            <label>Foto da Nota:</label>
+            <input type="file" class="manutencao-foto" accept="image/*">
+        `;
+        manutencoesLista.appendChild(newItem);
     });
 
-    // Salva o estado do formulário a cada alteração
-    form.addEventListener('input', saveFormState);
+    // --- ENVIO DO FORMULÁRIO ---
 
-    // --- SUBMISSÃO DO FORMULÁRIO ---
-    form.addEventListener('submit', (event) => {
-        event.preventDefault();
+    freteForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
         
-        // Coletar todos os dados do formulário
-        const dadosFrete = {
-            id: new Date().getTime(), // ID único para o IndexedDB
-            motorista: document.getElementById('motorista').value,
-            placa: document.getElementById('placa').value,
-            origem: document.getElementById('origem').value,
-            destino: document.getElementById('destino').value,
-            transportadora: document.querySelector('input[name="transportadora"]:checked').value === 'outra' ? document.getElementById('outra-transportadora').value : 'Laranja Verde',
-            produto: document.getElementById('produto').value,
-            dataSaida: document.getElementById('data-saida').value,
-            kmSaida: document.getElementById('km-saida').value,
-            kmChegada: document.getElementById('km-chegada').value,
-            pesoSaida: document.getElementById('peso-saida').value,
-            valorTonelada: document.getElementById('valor-tonelada').value,
-            valorTotal: document.getElementById('valor-total').value,
-            dataDescarga: document.getElementById('data-descarga').value,
-            abastecimentos: [],
-            manutencoes: [],
-            fotosAbastecimento: [],
-            fotosManutencao: []
-        };
-        
-        // Coletar dados de abastecimentos
-        document.querySelectorAll('.abastecimento-item').forEach(async (item) => {
-            const fotoInput = item.querySelector('input[type="file"]');
-            dadosFrete.abastecimentos.push({
-                valor: item.querySelector('[data-field="valor"]').value,
-                data: item.querySelector('[data-field="data"]').value,
-                local: item.querySelector('[data-field="local"]').value,
-                posto: item.querySelector('[data-field="posto"]').value,
-                litros: item.querySelector('[data-field="litros"]').value,
-                km: item.querySelector('[data-field="km"]').value,
-            });
-            if (fotoInput.files[0]) {
-                 const base64 = await toBase64(fotoInput.files[0]);
-                 dadosFrete.fotosAbastecimento.push(base64);
-            }
-        });
-
-        // Coletar dados de manutenções
-        document.querySelectorAll('.manutencao-item').forEach(async (item) => {
-             const fotoInput = item.querySelector('input[type="file"]');
-            dadosFrete.manutencoes.push({
-                valor: item.querySelector('[data-field="valor"]').value,
-                data: item.querySelector('[data-field="data"]').value,
-                local: item.querySelector('[data-field="local"]').value,
-                servico: item.querySelector('[data-field="servico"]').value,
-            });
-            if (fotoInput.files[0]) {
-                 const base64 = await toBase64(fotoInput.files[0]);
-                 dadosFrete.fotosManutencao.push(base64);
-            }
-        });
-
-        // Salvar no IndexedDB
-        saveDataLocally(dadosFrete);
-    });
-
-    // Função para salvar dados no IndexedDB
-    function saveDataLocally(data) {
-        if (!db) {
-            showAlert('Banco de dados local não está pronto.', 'error');
+        if (GOOGLE_SCRIPT_URL === 'COLE_AQUI_O_URL_DO_SEU_SCRIPT_DEPLOYADO') {
+            alert('Erro: O URL do Google Apps Script não foi configurado em script.js.');
             return;
         }
-        const transaction = db.transaction(['fretes'], 'readwrite');
-        const store = transaction.objectStore('fretes');
-        const request = store.add(data);
 
-        request.onsuccess = () => {
-            showAlert('Dados salvos localmente! Serão enviados assim que houver conexão.', 'success');
-            form.reset(); // Limpa o formulário
-            abastecimentosContainer.innerHTML = ''; // Limpa seções dinâmicas
-            manutencoesContainer.innerHTML = '';   // Limpa seções dinâmicas
-            
-            // Limpa o estado do formulário salvo no localStorage
-            localStorage.removeItem(FORM_STATE_KEY);
+        loadingOverlay.style.display = 'flex';
 
-            // Disparar o evento de sincronização
-            if ('serviceWorker' in navigator && 'SyncManager' in window) {
-                navigator.serviceWorker.ready.then(reg => {
-                    reg.sync.register('sync-fretes');
-                });
+        // 1. Coletar dados do Frete Principal
+        let transportadoraNome = radioTransportadoraLV.checked ? "Laranja Verde" : inputTransportadoraOutraNome.value;
+
+        const dadosFrete = {
+            // Dados da Viagem (para vincular)
+            motorista: motoristaNomeInput.value,
+            placa: placaCaminhaoInput.value,
+            dataViagem: dataAtualInput.value,
+            codigoViagem: codigoViagemInput.value,
+            // Dados do Frete
+            codigoFrete: formFreteId.value,
+            origem: document.getElementById('form-origem').value,
+            destino: document.getElementById('form-destino').value,
+            transportadora: transportadoraNome,
+            produto: document.getElementById('form-produto').value,
+            dataSaida: document.getElementById('form-data-saida').value,
+            kmSaida: document.getElementById('form-km-saida').value,
+            kmChegada: document.getElementById('form-km-chegada').value,
+            pesoSaida: pesoSaidaInput.value,
+            valorTonelada: valorToneladaInput.value,
+            valorTotal: valorTotalInput.value,
+            dataDescarga: document.getElementById('form-data-descarga').value,
+        };
+
+        // 2. Coletar Abastecimentos
+        const abastecimentos = [];
+        document.querySelectorAll('#abastecimentos-lista .dynamic-item').forEach(item => {
+            abastecimentos.push({
+                valor: item.querySelector('.abastecimento-valor').value,
+                data: item.querySelector('.abastecimento-data').value,
+                local: item.querySelector('.abastecimento-local').value,
+                posto: item.querySelector('.abastecimento-posto').value,
+                litros: item.querySelector('.abastecimento-litros').value,
+                km: item.querySelector('.abastecimento-km').value,
+                // A foto será tratada no GAS (veja a complexidade abaixo)
+            });
+        });
+
+        // 3. Coletar Manutenções
+        const manutencoes = [];
+        document.querySelectorAll('#manutencoes-lista .dynamic-item').forEach(item => {
+            manutencoes.push({
+                valor: item.querySelector('.manutencao-valor').value,
+                data: item.querySelector('.manutencao-data').value,
+                local: item.querySelector('.manutencao-local').value,
+                servico: item.querySelector('.manutencao-servico').value,
+            });
+        });
+
+        // 4. Montar o objeto final
+        const payload = {
+            frete: dadosFrete,
+            abastecimentos: abastecimentos,
+            manutencoes: manutencoes
+        };
+
+        // **Aviso sobre FOTOS:** Enviar arquivos (fotos) para Google Sheets/Drive
+        // via Apps Script a partir de um formulário HTML é MUITO complexo.
+        // Requer codificação Base64 no cliente e decodificação no servidor (GAS)
+        // para salvar no Google Drive e então colocar o link na planilha.
+        //
+        // O código atual envia apenas os *dados de texto*. A lógica de upload de
+        // arquivos foi omitida para simplificar a solução inicial.
+
+        try {
+            const response = await fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'cors',
+                // Redirecionamento é necessário para scripts do Google
+                redirect: 'follow', 
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8', // Requerido pelo GAS para JSON em modo 'text'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                alert('Frete salvo com sucesso!');
+                // Limpa o formulário e volta para a tela de adicionar MAIS fretes
+                // (ou pode voltar para a tela inicial)
+                btnIniciarFrete.click(); // Simula o clique para preparar o próximo frete
             } else {
-                 // Fallback para navegadores sem Background Sync
-                 attemptSync(); // Cuidado: A função attemptSync() não foi definida no seu código.
+                throw new Error(result.message || 'Erro desconhecido no servidor.');
             }
-        };
 
-        request.onerror = (event) => {
-            showAlert('Erro ao salvar os dados localmente.', 'error');
-            console.error('Erro no IndexedDB:', event.target.error);
-        };
-    }
-});
-
-
-// --- FUNÇÕES AUXILIARES ---
-
-// Cria o HTML para um novo item de abastecimento
-function createAbastecimentoHTML(index) {
-    return `
-        <div class="dynamic-section abastecimento-item">
-            <h4>Abastecimento ${index + 1}</h4>
-            <input type="number" step="0.01" placeholder="Valor (R$)" data-field="valor" required>
-            <input type="date" data-field="data" required>
-            <input type="text" placeholder="Local" data-field="local" required>
-            <input type="text" placeholder="Nome do Posto" data-field="posto" required>
-            <input type="number" step="0.01" placeholder="Litros" data-field="litros" required>
-            <input type="number" placeholder="Quilometragem" data-field="km" required>
-            <label>Foto da NF:</label>
-            <input type="file" accept="image/*" capture="environment">
-        </div>
-    `;
-}
-
-// Cria o HTML para um novo item de manutenção
-function createManutencaoHTML(index) {
-    return `
-        <div class="dynamic-section manutencao-item">
-            <h4>Manutenção ${index + 1}</h4>
-            <input type="number" step="0.01" placeholder="Valor (R$)" data-field="valor" required>
-            <input type="date" data-field="data" required>
-            <input type="text" placeholder="Local" data-field="local" required>
-            <input type="text" placeholder="Serviço Prestado" data-field="servico" required>
-            <label>Foto da NF:</label>
-            <input type="file" accept="image/*" capture="environment">
-        </div>
-    `;
-}
-
-// Converte um arquivo para Base64
-const toBase64 = file => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = error => reject(error);
-});
-
-
-// Função para exibir alertas modais personalizados
-function showAlert(message, type = 'info') { // types: info, success, error
-    const modal = document.getElementById('custom-alert');
-    const content = modal.querySelector('.alert-content');
-    const messageP = document.getElementById('alert-message');
-    const closeBtn = modal.querySelector('.close-btn');
-
-    messageP.textContent = message;
-    content.className = 'alert-content ' + type; // Adiciona a classe de cor
-    modal.style.display = 'flex';
-
-    const closeModal = () => modal.style.display = 'none';
-    closeBtn.onclick = closeModal;
-    window.onclick = (event) => {
-        if (event.target == modal) {
-            closeModal();
+        } catch (error) {
+            console.error('Erro ao enviar dados:', error);
+            alert(`Erro ao salvar. Verifique sua conexão e tente novamente.\nDetalhe: ${error.message}`);
+        } finally {
+            loadingOverlay.style.display = 'none';
         }
-    };
-}
+    });
+
+    // --- INICIALIZAÇÃO ---
+    inicializarEntrada();
+    showScreen('screen-entry');
+});
