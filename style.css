@@ -154,3 +154,39 @@ button.btn-green-small {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* --- Estilos para Botões de Rádio Horizontais --- */
+
+.radio-group-horizontal {
+  display: flex;
+  flex-wrap: wrap; /* Permite quebrar a linha em telas pequenas */
+  gap: 20px;       /* Espaço entre a opção "Laranja Verde" e "Outra" */
+  margin-top: 5px;
+  margin-bottom: 15px; /* Espaço antes do campo de texto "Outra" */
+}
+
+.radio-option {
+  display: flex;
+  align-items: center; /* Alinha o botão e o texto verticalmente */
+  cursor: pointer;
+}
+
+/* * ESTA É A CORREÇÃO PRINCIPAL:
+ * Nós substituímos o "display: block" que existia na
+ * regra "form label" genérica.
+ */
+.radio-option label {
+  display: inline-block;  /* Faz o texto ficar ao lado */
+  font-weight: normal;  /* Tira o negrito (opcional) */
+  margin-top: 0;        /* Remove a margem do topo */
+  margin-left: 5px;     /* Espaço entre o botão e o texto */
+  cursor: pointer;
+}
+
+/* * Garante que o input de rádio não tente
+ * ocupar 100% da largura.
+ */
+.radio-option input[type="radio"] {
+  width: auto;
+  cursor: pointer;
+}

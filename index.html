@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controle de Fretes</title>
-    <link rel="stylesheet" href="style.css?v=1.1">
+    <link rel="stylesheet" href="style.css?v=1.2">
     <link rel="stylesheet" href="logo_tlv_base64.css">
 </head>
 <body>
@@ -49,12 +49,16 @@
 
                 <fieldset>
                     <legend>Transportadora</legend>
-                    <input type="radio" id="radio-transportadora-lv" name="transportadora-tipo" value="Laranja Verde" checked>
-                    <label for="radio-transportadora-lv">Laranja Verde</label>
-                    
-                    <input type="radio" id="radio-transportadora-outra" name="transportadora-tipo" value="Outra">
-                    <label for="radio-transportadora-outra">Outra</label>
-                    
+                    <div class="radio-group-horizontal">
+                        <div class="radio-option">
+                            <input type="radio" id="radio-transportadora-lv" name="transportadora-tipo" value="Laranja Verde" checked>
+                            <label for="radio-transportadora-lv">Laranja Verde</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" id="radio-transportadora-outra" name="transportadora-tipo" value="Outra">
+                            <label for="radio-transportadora-outra">Outra</label>
+                        </div>
+                    </div>
                     <input type="text" id="form-transportadora-outra-nome" placeholder="Qual o nome da outra transportadora?" style="display:none;">
                 </fieldset>
 

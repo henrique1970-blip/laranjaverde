@@ -3,21 +3,20 @@ const ID_PASTA_FOTOS = "1fKRyqP1-b34sflAxuWPs_zYCZrfslcvu";
 // ID da sua planilha. O script pega automaticamente da planilha onde está contido.
 const ID_PLANILHA = SpreadsheetApp.getActiveSpreadsheet().getId();
 
-// Função que é executada quando o aplicativo envia dados (via POST)
+// ##################################################################
+// ############# FUNÇÃO CORRIGIDA - INÍCIO #############
+// ##################################################################
 function doPost(e) {
   try {
     const dados = JSON.parse(e.postData.contents);
-
-    const planilha = SpreadsheetApp.openById(ID_PLANILHA);
+const planilha = SpreadsheetApp.openById(ID_PLANILHA);
     const aba = planilha.getSheetByName("controle") || planilha.insertSheet("controle");
 
     verificarCabecalhos(aba);
-
-    // Processar fotos
+// Processar fotos
     const urlFotoNfAbastecimento = processarFotos(dados.fotosAbastecimento, "nf_abastecimento");
     const urlFotoNfManutencao = processarFotos(dados.fotosManutencao, "nf_manutencao");
-
-    // Montar a linha de dados para a planilha
+// Montar a linha de dados para a planilha
     const novaLinha = [
       new Date(), // Timestamp de quando o dado foi recebido
       dados.motorista,
@@ -31,30 +30,36 @@ function doPost(e) {
       dados.kmChegada,
       dados.pesoSaida,
       dados.valorTonelada,
-      dados.valorTotal,
+    
+  dados.valorTotal,
       dados.dataDescarga,
       dados.abastecimentos.map(a => JSON.stringify(a)).join('; '), // Converte array de objetos para texto
       dados.manutencoes.map(m => JSON.stringify(m)).join('; '), // Converte array de objetos para texto
       urlFotoNfAbastecimento.join(', '), // URLs das fotos
       urlFotoNfManutencao.join(', ') // URLs das fotos
     ];
-
-    aba.appendRow(novaLinha);
+aba.appendRow(novaLinha);
 
     // Retorna uma resposta de sucesso para o aplicativo
-    return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Dados recebidos!" })).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Dados recebidos!" }))
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*'); // <-- LINHA ADICIONADA
 
-  } catch (error) {
+} catch (error) {
     // Em caso de erro, retorna uma mensagem de erro
-    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: error.toString() })).setMimeType(ContentService.MimeType.JSON);
-  }
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*'); // <-- LINHA ADICIONADA
 }
+}
+// ##################################################################
+// ############# FUNÇÃO CORRIGIDA - FIM #############
+// ##################################################################
 
 // Função para processar e salvar as fotos no Drive
 function processarFotos(fotosArray, prefixo) {
   if (!fotosArray || fotosArray.length === 0) return [];
-  
-  const pasta = DriveApp.getFolderById(ID_PASTA_FOTOS);
+const pasta = DriveApp.getFolderById(ID_PASTA_FOTOS);
   const urls = [];
 
   fotosArray.forEach((foto, index) => {
@@ -64,8 +69,7 @@ function processarFotos(fotosArray, prefixo) {
     arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); // Torna o arquivo visível por link
     urls.push(arquivo.getUrl());
   });
-
-  return urls;
+return urls;
 }
 
 // Função para verificar e criar os cabeçalhos na planilha se não existirem
@@ -77,6 +81,6 @@ function verificarCabecalhos(aba) {
       "Valor por Tonelada (R$)", "Valor Total (R$)", "Data da Descarga", "Abastecimentos",
       "Manutenções", "Links NF Abastecimento", "Links NF Manutenção"
     ];
-    aba.appendRow(cabecalhos);
+aba.appendRow(cabecalhos);
   }
 }
