@@ -1,6 +1,6 @@
 // ############# CONFIGURAÇÃO #############
 // COLE AQUI A URL DO SEU SCRIPT PUBLICADO
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxUpZ7MO8eBOvOtqsjjc4ypUrwBM0VySkWvUyAoiiPBbyXmkzjCBn5Ve1cTwtoq2FTg8g/exec"; 
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw48rzi3T9hTp-K-3WqDG2lvq_U89wKD2kYd3og8Xq0MN7qdxT9A31GPTFKcL-FHGSLpA/exec"; 
 // #########################################
 
 const CACHE_NAME = 'fretes-cache-v1';
