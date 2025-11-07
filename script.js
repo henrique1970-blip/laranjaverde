@@ -30,6 +30,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnAddManutencao = document.getElementById('add-manutencao');
     const manutencoesContainer = document.getElementById('manutencoes-container');
 
+    // --- LÓGICA DE PERSISTÊNCIA DO FORMULÁRIO (localStorage) ---
+    const formInputs = document.querySelectorAll('#frete-form input[type="text"], #frete-form input[type="number"], #frete-form input[type="date"]');
+    const FORM_STATE_KEY = 'freteFormState';
+
+    // Salva o estado atual do formulário no localStorage
+    function saveFormState() {
+        const state = {};
+        formInputs.forEach(input => {
+            if (input.id) { // Só salva se tiver ID
+                state[input.id] = input.value;
+            }
+        });
+        localStorage.setItem(FORM_STATE_KEY, JSON.stringify(state));
+    }
+
+    // Carrega o estado salvo do formulário do localStorage
+    function loadFormState() {
+        const savedState = localStorage.getItem(FORM_STATE_KEY);
+        if (savedState) {
+            console.log("Carregando estado salvo do formulário...");
+            const state = JSON.parse(savedState);
+            formInputs.forEach(input => {
+                if (input.id && state[input.id]) {
+                    input.value = state[input.id];
+                }
+            });
+            // Recalcular valor total se os campos existirem
+            if (pesoSaidaInput && valorToneladaInput && valorTotalInput) {
+                const peso = parseFloat(pesoSaidaInput.value) || 0;
+                const valorTon = parseFloat(valorToneladaInput.value) || 0;
+                valorTotalInput.value = (peso * valorTon).toFixed(2);
+            }
+        }
+    }
+    // -----------------------------------------------------------
+
     // Inicialização do IndexedDB
     let db;
     const request = indexedDB.open('fretesDB', 1);
@@ -50,7 +86,9 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(reg => console.log('Service Worker registrado com sucesso.'))
             .catch(err => console.error('Erro ao registrar Service Worker:', err));
     }
-
+    
+    // Carrega o estado do formulário salvo assim que o DOM estiver pronto
+    loadFormState();
 
     // --- LÓGICA DE LOGIN E NAVEGAÇÃO ---
     btnEntrar.addEventListener('click', () => {
@@ -102,6 +140,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const index = manutencoesContainer.children.length;
         manutencoesContainer.insertAdjacentHTML('beforeend', createManutencaoHTML(index));
     });
+
+    // Salva o estado do formulário a cada alteração
+    form.addEventListener('input', saveFormState);
 
     // --- SUBMISSÃO DO FORMULÁRIO ---
     form.addEventListener('submit', (event) => {
@@ -181,6 +222,9 @@ document.addEventListener('DOMContentLoaded', () => {
             abastecimentosContainer.innerHTML = ''; // Limpa seções dinâmicas
             manutencoesContainer.innerHTML = '';   // Limpa seções dinâmicas
             
+            // Limpa o estado do formulário salvo no localStorage
+            localStorage.removeItem(FORM_STATE_KEY);
+
             // Disparar o evento de sincronização
             if ('serviceWorker' in navigator && 'SyncManager' in window) {
                 navigator.serviceWorker.ready.then(reg => {
@@ -188,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             } else {
                  // Fallback para navegadores sem Background Sync
-                 attemptSync();
+                 attemptSync(); // Cuidado: A função attemptSync() não foi definida no seu código.
             }
         };
 

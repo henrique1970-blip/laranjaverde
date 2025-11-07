@@ -1,6 +1,3 @@
-
-
-
 // ############# CONFIGURAÇÃO #############
 // COLE AQUI A URL DO SEU SCRIPT PUBLICADO
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxUpZ7MO8eBOvOtqsjjc4ypUrwBM0VySkWvUyAoiiPBbyXmkzjCBn5Ve1cTwtoq2FTg8g/exec"; 
@@ -64,23 +61,61 @@ function syncFretes() {
     });
 }
 
+// ##################################################################
+// ############# FUNÇÃO CORRIGIDA - INÍCIO #############
+// ##################################################################
 function sendDataToServer(fretes) {
     const promises = fretes.map(frete => {
+        
+        console.log("Tentando enviar frete:", frete.id);
+
         return fetch(APPS_SCRIPT_URL, {
             method: 'POST',
             body: JSON.stringify(frete),
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Apps Script espera text/plain para doPost
-            mode: 'no-cors' // Essencial para evitar erros de CORS com Apps Script
-        }).then(response => {
-            // Como estamos em modo no-cors, não podemos ler a resposta.
-            // Assumimos sucesso e removemos do DB local.
-            console.log('Dado enviado (provavelmente com sucesso):', frete.id);
-            return removeFromLocalDB(frete.id);
+            headers: { 
+                'Content-Type': 'text/plain;charset=utf-8' 
+            },
+            // mode: 'no-cors' // <-- ESTA LINHA FOI REMOVIDA (ERA O PROBLEMA)
+        })
+        .then(response => {
+            // Agora podemos ler a resposta!
+            // Se a resposta NÃO for OK (ex: 404, 500, ou falha de CORS), jogue um erro.
+            if (!response.ok) {
+                throw new Error(`Erro de rede/servidor: ${response.status} ${response.statusText}`);
+            }
+            // A resposta foi OK, agora lemos o JSON que o code.gs enviou
+            return response.json(); 
+        })
+        .then(data => {
+            // Verificamos o status DENTRO do JSON enviado pelo Apps Script
+            if (data.status === 'success') {
+                // SUCESSO REAL! O code.gs confirmou.
+                console.log('Dado enviado e confirmado pelo servidor:', frete.id);
+                // Só agora podemos remover do DB local.
+                return removeFromLocalDB(frete.id);
+            } else {
+                // O Apps Script reportou um erro (ex: falha ao salvar no Drive)
+                console.error('Erro reportado pelo Apps Script:', data.message);
+                // Jogue um erro para que este item NÃO seja removido do DB e tente de novo.
+                throw new Error(data.message);
+            }
+        })
+        .catch(error => {
+            // Falha no fetch (offline) ou erro no .then()
+            console.error(`Falha ao enviar o registro ${frete.id}. Tentará novamente.`, error);
+            // Joga o erro para que o Promise.all falhe e o sync tente novamente mais tarde.
+            throw error;
         });
     });
 
+    // Promise.all garante que SÓ se todos os fretes forem enviados com sucesso,
+    // o evento de sync será concluído.
     return Promise.all(promises);
 }
+// ##################################################################
+// ############# FUNÇÃO CORRIGIDA - FIM #############
+// ##################################################################
+
 
 function removeFromLocalDB(id) {
      return new Promise((resolve, reject) => {
