@@ -16,11 +16,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const motoristaNomeInput = document.getElementById('motorista-nome');
     const placaCaminhaoInput = document.getElementById('placa-caminhao');
     const dataAtualInput = document.getElementById('data-atual');
-    const codigoViagemInput = document.getElementById('codigo-viagem');
+    const codigoViagemInput = document.getElementById('codigo-viagem'); // Este é o CÓDIGO DA VIAGEM
     const btnIniciarFrete = document.getElementById('btn-iniciar-frete');
     const btnEditarFrete = document.getElementById('btn-editar-frete');
 
-    // --- Elementos da Tela de Consulta (NOVO) ---
+    // --- Elementos da Tela de Consulta ---
     const queryForm = document.getElementById('query-form');
     const queryMotoristaNome = document.getElementById('query-motorista-nome');
     const queryData = document.getElementById('query-data');
@@ -34,7 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const freteForm = document.getElementById('frete-form');
     const formTitle = document.getElementById('form-title');
     const formMotorista = document.getElementById('form-motorista');
-    const formFreteId = document.getElementById('form-frete-id');
+    const formFreteId = document.getElementById('form-frete-id'); // Este é o CÓDIGO DO FRETE (Viagem + Contador)
     const radioTransportadoraOutra = document.getElementById('radio-transportadora-outra');
     const radioTransportadoraLV = document.getElementById('radio-transportadora-lv');
     const inputTransportadoraOutraNome = document.getElementById('form-transportadora-outra-nome');
@@ -47,8 +47,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const manutencoesLista = document.getElementById('manutencoes-lista');
     const btnVoltar = document.getElementById('btn-voltar');
 
+    // --- Elementos dos Modais de Viagem (NOVO) ---
+    const tripChoiceModal = document.getElementById('trip-choice-modal');
+    const btnNovaViagem = document.getElementById('btn-nova-viagem');
+    const btnViagemExistente = document.getElementById('btn-viagem-existente');
+    const btnCancelarChoice = document.getElementById('btn-cancelar-choice');
+    
+    const viagemSelectModal = document.getElementById('viagem-select-modal');
+    const viagemSelectList = document.getElementById('viagem-select-list');
+    const btnCarregarViagemSelecionada = document.getElementById('btn-carregar-viagem-selecionada');
+    const btnCancelarSelect = document.getElementById('btn-cancelar-select');
+
     // --- Variáveis de Estado ---
-    let freteCounter = 0;
+    let freteCounter = 0; // Agora é controlado pela lógica de viagem
     let currentMode = 'add'; // 'add' ou 'edit'
     let currentEditData = {}; // Armazena dados do frete em edição
 
@@ -130,7 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
             
             if (primeiroNome && placa) {
                 const ddmm = obterDDMM(hoje);
-                codigoViagemInput.value = `${primeiroNome}-${ddmm}`;
+                codigoViagemInput.value = `${primeiroNome}-${ddmm}`; // Gera o CÓDIGO DE VIAGEM
                 btnIniciarFrete.disabled = false;
             } else {
                 codigoViagemInput.value = '';
@@ -139,17 +150,17 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         motoristaNomeInput.addEventListener('input', gerarCodigoViagem);
         placaCaminhaoInput.addEventListener('input', gerarCodigoViagem);
+        // O listener de btnIniciarFrete foi movido para a seção de MODAIS
         gerarCodigoViagem();
     }
 
-    // --- LÓGICA DA TELA DE CONSULTA (NOVO) ---
+    // --- LÓGICA DA TELA DE CONSULTA (EDITAR) ---
 
     btnEditarFrete.addEventListener('click', () => {
         currentMode = 'edit';
         queryForm.reset();
         queryResults.style.display = 'none';
         queryFreteSelect.innerHTML = '';
-        // Preenche o nome do motorista da tela inicial, se houver
         queryMotoristaNome.value = motoristaNomeInput.value; 
         showScreen('screen-query');
     });
@@ -164,13 +175,11 @@ document.addEventListener("DOMContentLoaded", () => {
             alert('Por favor, digite o nome do motorista.');
             return;
         }
-
         showLoading('Buscando fretes...');
         
         const payload = {
             action: 'getFretesList',
             motorista: motorista,
-            // Converte data para dd/mm/aaaa para buscar
             data: reformatarDataParaPlanilha(queryData.value) 
         };
 
@@ -185,7 +194,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const result = await response.json();
 
             if (result.status === 'success' && result.data.length > 0) {
-                queryFreteSelect.innerHTML = ''; // Limpa opções anteriores
+                queryFreteSelect.innerHTML = '<option value="">Selecione um frete...</option>';
                 result.data.forEach(frete => {
                     const option = document.createElement('option');
                     option.value = frete.codigoFrete;
@@ -210,7 +219,6 @@ document.addEventListener("DOMContentLoaded", () => {
             alert('Nenhum frete selecionado.');
             return;
         }
-        
         showLoading('Carregando dados do frete...');
         
         const payload = {
@@ -242,13 +250,120 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    
+    // --- LÓGICA DOS MODAIS DE VIAGEM (NOVO) ---
+
+    // Botão principal "Adicionar Novo Frete" agora abre o modal de escolha
+    btnIniciarFrete.addEventListener('click', () => {
+        // Valida se motorista e placa foram preenchidos
+        if (!motoristaNomeInput.value.trim() || !placaCaminhaoInput.value.trim()) {
+            alert('Por favor, preencha o nome do motorista e a placa do caminhão primeiro.');
+            return;
+        }
+        // Garante que o código de viagem (para o caso de ser "nova") está atualizado
+        inicializarEntrada(); 
+        tripChoiceModal.style.display = 'flex';
+    });
+
+    // Botão "Cancelar" no primeiro modal
+    btnCancelarChoice.addEventListener('click', () => {
+        tripChoiceModal.style.display = 'none';
+    });
+
+    // Botão "Cancelar" no segundo modal
+    btnCancelarSelect.addEventListener('click', () => {
+        viagemSelectModal.style.display = 'none';
+    });
+
+    // Cenário 1: Usuário escolhe "Nova Viagem"
+    btnNovaViagem.addEventListener('click', () => {
+        tripChoiceModal.style.display = 'none';
+        freteCounter = 0; // Reseta o contador para uma nova viagem
+        prepareFormForNewFrete(codigoViagemInput.value); // Usa o código gerado na tela inicial
+    });
+
+    // Cenário 2: Usuário escolhe "Viagem Existente"
+    btnViagemExistente.addEventListener('click', async () => {
+        tripChoiceModal.style.display = 'none';
+        showLoading('Buscando viagens anteriores...');
+        
+        const payload = {
+            action: 'getViagensList',
+            motorista: motoristaNomeInput.value.trim()
+        };
+
+        try {
+            const response = await fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'cors',
+                redirect: 'follow', 
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            
+            if (result.status === 'success' && result.data.length > 0) {
+                viagemSelectList.innerHTML = ''; // Limpa opções
+                result.data.forEach(viagem => {
+                    const option = document.createElement('option');
+                    option.value = viagem.codigoViagem;
+                    option.textContent = viagem.displayText; // Ex: "Nome-0811 (Iniciada em: 08/11/2025)"
+                    viagemSelectList.appendChild(option);
+                });
+                viagemSelectModal.style.display = 'flex';
+            } else {
+                alert('Nenhuma viagem anterior encontrada para este motorista.');
+            }
+        } catch (error) {
+            alert('Erro ao buscar viagens: ' + error.message);
+        } finally {
+            hideLoading();
+        }
+    });
+
+    // Cenário 2b: Usuário seleciona a viagem e clica em "Adicionar a esta Viagem"
+    btnCarregarViagemSelecionada.addEventListener('click', async () => {
+        const selectedViagemCode = viagemSelectList.value;
+        if (!selectedViagemCode) return;
+        
+        viagemSelectModal.style.display = 'none';
+        showLoading('Carregando dados da viagem...');
+
+        const payload = {
+            action: 'getLastFreteCounter',
+            codigoViagem: selectedViagemCode
+        };
+        
+        try {
+            const response = await fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'cors',
+                redirect: 'follow', 
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                // O contador global é atualizado para o último frete dessa viagem (ex: 2)
+                freteCounter = result.lastCounter;
+                // Prepara o formulário (que vai incrementar o contador para 3)
+                prepareFormForNewFrete(selectedViagemCode);
+            } else {
+                throw new Error(result.message || 'Não foi possível obter o contador de fretes.');
+            }
+        } catch (error) {
+            alert('Erro ao carregar viagem: ' + error.message);
+        } finally {
+            hideLoading();
+        }
+    });
+
 
     // --- LÓGICA DA TELA DE FORMULÁRIO (ADICIONAR E EDITAR) ---
 
     // Habilita/Desabilita todos os campos principais do frete
-
     function setMainFieldsReadOnly(isReadOnly) {
-        // CORREÇÃO: Removemos os campos que devem estar SEMPRE bloqueados
         const fields = [
             'form-origem', 'form-destino', 
             'form-produto', 'form-data-saida', 'form-km-saida', 'form-peso-saida', 
@@ -264,15 +379,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 el.readOnly = isReadOnly;
             }
         });
-        
-        // Desabilita os fieldsets para travar os radios
         document.getElementById('fieldset-transportadora').disabled = isReadOnly;
     }
 
-    // Prepara o formulário para ADICIONAR um novo frete
-    btnIniciarFrete.addEventListener('click', () => {
+    // Prepara o formulário para ADICIONAR um novo frete (seja de viagem nova or existente)
+    function prepareFormForNewFrete(viagemCode) {
         currentMode = 'add';
-        freteCounter++; 
+        freteCounter++; // Incrementa (se era 0, vira 1; se era 2, vira 3)
         
         freteForm.reset(); 
         abastecimentosLista.innerHTML = '';
@@ -282,28 +395,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Preenche campos da viagem
         formMotorista.value = motoristaNomeInput.value;
-        formFreteId.value = `${codigoViagemInput.value}-${freteCounter}`;
+        // Usa o código da viagem (novo ou selecionado) e o novo contador
+        formFreteId.value = `${viagemCode}-${freteCounter}`; // Ex: "Nome-0811-1" ou "ViagemExistente-3"
         
         formTitle.textContent = 'Adicionar Novo Frete';
         setMainFieldsReadOnly(false); // Destrava todos os campos
         
+        // Garante que o campo de código de viagem na tela inicial (que será submetido) está correto
+        codigoViagemInput.value = viagemCode;
+        
         showScreen('screen-form');
-    });
+    }
 
     // Prepara o formulário para EDITAR um frete existente
     function populateFormForEdit(data) {
         freteForm.reset(); 
-        abastecimentosLista.innerHTML = ''; // Limpa para adicionar novos
-        manutencoesLista.innerHTML = ''; // Limpa para adicionar novos
+        abastecimentosLista.innerHTML = '';
+        manutencoesLista.innerHTML = '';
 
         formTitle.textContent = 'Editar Frete';
         
         const frete = data.frete;
         
-        // Preenche todos os campos com os dados buscados
         formMotorista.value = frete.motorista;
-        formFreteId.value = frete.codigoFrete;
-        formFreteId.value = frete.codigoFrete;
+        formFreteId.value = frete.codigoFrete; // Este é o código do FRETE (ex: Viagem-1)
+        
+        // Extrai o código da VIAGEM do código do FRETE
+        const parts = frete.codigoFrete.split('-');
+        parts.pop(); // Remove o contador
+        codigoViagemInput.value = parts.join('-'); // Define o código da VIAGEM atual
+        
         document.getElementById('form-origem').value = frete.origem;
         document.getElementById('form-destino').value = frete.destino;
         document.getElementById('form-produto').value = frete.produto;
@@ -312,12 +433,10 @@ document.addEventListener("DOMContentLoaded", () => {
         valorToneladaInput.value = frete.valorTonelada;
         valorTotalInput.value = frete.valorTotal;
 
-        // Converte datas dd/mm/aaaa para yyyy-mm-dd para os inputs
         document.getElementById('form-data-saida').value = reformatarDataParaInput(frete.dataSaida);
         document.getElementById('form-km-chegada').value = frete.kmChegada;
         document.getElementById('form-data-descarga').value = reformatarDataParaInput(frete.dataDescarga);
         
-        // Ajusta a transportadora
         if (frete.transportadora === 'Laranja Verde') {
             radioTransportadoraLV.checked = true;
             inputTransportadoraOutraNome.style.display = 'none';
@@ -327,23 +446,17 @@ document.addEventListener("DOMContentLoaded", () => {
             inputTransportadoraOutraNome.style.display = 'block';
         }
         
-        // Trava os campos principais
         setMainFieldsReadOnly(true);
         
-        // Libera os campos de edição
         document.getElementById('form-km-chegada').readOnly = false;
         document.getElementById('form-data-descarga').readOnly = false;
-
-        // NOTA: Os abastecimentos/manutenções existentes não são mostrados,
-        // mas o usuário pode ADICIONAR novos, conforme solicitado.
     }
 
     btnVoltar.addEventListener('click', () => {
         if (confirm('Tem certeza que deseja voltar? Todos os dados não salvos serão perdidos.')) {
-            // Se estava editando, volta para a tela de consulta
             if (currentMode === 'edit') {
                 showScreen('screen-query');
-            } else { // Se estava adicionando, volta para a tela inicial
+            } else { 
                 showScreen('screen-entry');
             }
         }
@@ -439,9 +552,9 @@ document.addEventListener("DOMContentLoaded", () => {
             const dadosFrete = {
                 motorista: motoristaNomeInput.value,
                 placa: placaCaminhaoInput.value,
-                dataViagem: dataAtualInput.value,
-                codigoViagem: codigoViagemInput.value,
-                codigoFrete: formFreteId.value,
+                dataViagem: dataAtualInput.value, // Data de início da viagem (da tela inicial)
+                codigoViagem: codigoViagemInput.value, // O código da VIAGEM (ex: "Nome-0811")
+                codigoFrete: formFreteId.value, // O código do FRETE (ex: "Nome-0811-1")
                 origem: document.getElementById('form-origem').value,
                 destino: document.getElementById('form-destino').value,
                 transportadora: transportadoraNome,
@@ -510,7 +623,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (result.status === 'success') {
                 alert('Frete salvo com sucesso!');
-                btnIniciarFrete.click(); // Prepara para o próximo frete
+                // Prepara o formulário para o PRÓXIMO frete DENTRO da MESMA viagem
+                prepareFormForNewFrete(codigoViagemInput.value);
             } else {
                 throw new Error(result.message || 'Erro desconhecido no servidor.');
             }
@@ -565,10 +679,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const payload = {
                 action: 'updateFrete',
                 codigoFrete: formFreteId.value,
-                // Pega os dois campos editáveis
                 kmChegada: document.getElementById('form-km-chegada').value,
                 dataDescarga: reformatarDataParaPlanilha(document.getElementById('form-data-descarga').value),
-                // Adiciona os novos itens
                 abastecimentos: abastecimentos,
                 manutencoes: manutencoes
             };
