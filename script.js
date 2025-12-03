@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // *** IMPORTANTE ***
     // Cole aqui o URL do seu Google Apps Script (que você obterá na Etapa 5)
-    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbj19eTq9hIC0faZ2fa2Q0sQ0cz1n3S3wcWzlrT-msCDw5j7c1jPoIyYQ3oucTYh-xRw/exec';
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby3wFtLaoAaa6b07mhhFLRkPO9EFohviNITqa636FgPUP-nO3KuLk6ZtCKU6CPvzKF3JA/exec';
 
 
     // --- Referências de Tela ---
@@ -712,4 +712,5 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- INICIALIZAÇÃO ---
     inicializarEntrada();
     showScreen('screen-entry');
+
 });
