@@ -1,6 +1,6 @@
 // ############# CONFIGURAÇÃO #############
 // COLE AQUI A URL DO SEU SCRIPT PUBLICADO
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwbj19eTq9hIC0faZ2fa2Q0sQ0cz1n3S3wcWzlrT-msCDw5j7c1jPoIyYQ3oucTYh-xRw/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby3wFtLaoAaa6b07mhhFLRkPO9EFohviNITqa636FgPUP-nO3KuLk6ZtCKU6CPvzKF3JA/exec";
 // #########################################
 
 const CACHE_NAME = 'fretes-cache-v1';
@@ -135,3 +135,4 @@ function removeFromLocalDB(id) {
      });
 
 }
+
